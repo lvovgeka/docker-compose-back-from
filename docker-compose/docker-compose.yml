@@ -1,0 +1,74 @@
+version: '3.1'
+services:
+    webserver:
+        image: nginx:alpine
+        container_name: app-webserver
+        volumes:
+            - "./etc/nginx/default.conf:/etc/nginx/conf.d/default.conf"
+            - "./etc/ssl:/etc/ssl"
+            - "../back:/var/app/back"
+            - "./etc/nginx/default.template.conf:/etc/nginx/conf.d/default.template"
+        ports:
+            - "8000:80"
+            - "3000:443"
+#        environment:
+#            - NGINX_HOST=${NGINX_HOST}
+#        command: /bin/sh -c "envsubst '$$NGINX_HOST' < /etc/nginx/conf.d/default.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+        restart: always
+        depends_on:
+            - php7.2-fpm
+            - mysql-5.7
+        networks:
+          back:
+
+    php7.2-fpm:
+        build: etc/docker/php-fpm7.2
+        container_name: app-php7.2-fpm
+        restart: always
+#        environment:
+#            - APP_REMOTE_DEBUG=YES
+        working_dir: /var/app/back
+        volumes:
+            - "./etc/php/php.ini:/etc/php/7.2/fpm/conf.d/99-overrides.ini"
+            - "../back:/var/app/back"
+        depends_on:
+            - mysql-5.7
+        networks:
+          back:
+
+    php7.2-cli:
+        build: etc/docker/php-fpm7.2
+        container_name: app-php7.2-cli
+        restart: always
+#        environment:
+#            - APP_REMOTE_DEBUG=YES
+        working_dir: /var/app/back
+        volumes:
+            - "./etc/php/php.ini:/etc/php/7.2/cli/conf.d/99-overrides.ini"
+            - "../back:/var/app/back"
+        depends_on:
+            - mysql-5.7
+        expose:
+          - "9000"
+        networks:
+          back:
+
+    mysql-5.7:
+        image: mysql:5.7
+        container_name: ${MYSQL_HOST}
+        restart: always
+        env_file:
+            - ".env"
+        environment:
+            - MYSQL_DATABASE=${MYSQL_DATABASE}
+            - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+            - MYSQL_USER=${MYSQL_USER}
+            - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+        ports:
+            - "8989:3306"
+        volumes:
+            - "./var/lib/mysql:/var/lib/mysql"
+        networks:
+          back:
+networks:
+  back:
